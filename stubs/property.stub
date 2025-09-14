@@ -1,0 +1,4 @@
+    /**
+{{ validationRules }}
+     */
+    public {{ readonly }}{{ nullable }}{{ type }} ${{ name }}{{ comma }}

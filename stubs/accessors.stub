@@ -1,0 +1,5 @@
+    public function get{{ studlyName }}(): {{ nullable }}{{ type }}
+    {
+        return $this->{{ name }};
+    }
+{{ setter }}

@@ -1,0 +1,14 @@
+<?php
+
+namespace {{ namespace }};
+
+use {{ baseClass }};
+
+class {{ class }} extends {{ baseClassName }}
+{
+{{ properties }}
+
+{{ constructor }}
+
+{{ accessors }}
+}

@@ -1,22 +1,24 @@
 # Laravel Request DTO Generator
 
-A Laravel package that automatically generates Data Transfer Objects (DTOs) from your existing Request validation classes. This package helps maintain consistency between your validation logic and business logic by creating DTOs that mirror your Request validation rules.
+> ⚠️ **Disclaimer**: This package is not perfect and is still under active development. We welcome new suggestions, improvements, and contributions from the community. If you have ideas for enhancements or encounter issues, please feel free to open an issue or submit a pull request.
 
-## Features
+A Laravel package that automatically generates Data Transfer Objects (DTOs) from your existing Request validation classes using advanced JSON Schema generation. This package helps maintain consistency between your validation logic and business logic by creating DTOs that mirror your Request validation rules with proper type hinting and nested structure support.
+
+## ✨ Features
 
 - 🚀 **Automatic DTO Generation**: Generate DTOs from existing Request classes
 - 🔍 **Smart Type Detection**: Automatically detects PHP types from validation rules
 - 🎯 **Flexible Configuration**: Customize namespace, directory, and generation options
-- 📝 **Stub-based Templates**: Use customizable templates for consistent DTO generation
 - 🛠️ **Artisan Commands**: Easy-to-use command-line interface
 - 🔄 **Batch Generation**: Generate DTOs for all Request classes at once
 - 🎨 **Base DTO Class**: Rich base class with utility methods
-- 🧩 **Trait Support**: Easy integration with existing Request classes
 - 🏗️ **Typed Arrays**: Generate separate DTO classes for array items with proper typing
 - 🔗 **Nested Structures**: Support for complex nested validation rules
 - 📦 **Constructor Property Promotion**: Modern PHP 8+ syntax support
+- 🔒 **Readonly Properties**: Immutable DTOs for data integrity
+- 🎭 **ValidationSchemaGenerator**: Advanced JSON Schema generation from Laravel validation rules
 
-## Installation
+## 🚀 Installation
 
 1. Install the package via Composer:
 
@@ -36,73 +38,7 @@ php artisan vendor:publish --provider="BellissimoPizza\RequestDtoGenerator\Reque
 php artisan vendor:publish --provider="BellissimoPizza\RequestDtoGenerator\RequestDtoGeneratorServiceProvider" --tag="stubs"
 ```
 
-## Advanced Type Handling Examples
-
-### Numeric Fields with Mixed Types
-
-```php
-// Request with numeric validation
-class CreateProductRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return [
-            'price' => 'required|numeric',           // int|float
-            'weight' => 'required|string|numeric',   // string|int|float
-            'quantity' => 'required|integer',        // int
-            'discount' => 'nullable|numeric|min:0',  // int|float|null
-        ];
-    }
-}
-
-// Generated DTO
-class CreateProductDto extends BaseDto
-{
-    public function __construct(
-        private readonly int|float $price,
-        private readonly string|int|float $weight,
-        private readonly int $quantity,
-        private readonly int|float|null $discount,
-    ) {}
-}
-```
-
-### Safe Type Handling in Business Logic
-
-```php
-class ProductService
-{
-    public function createProduct(CreateProductDto $dto): Product
-    {
-        // Numeric fields are already int|float
-        $price = $dto->getPrice(); // int|float
-        $weight = $this->convertToFloat($dto->getWeight()); // string|int|float
-        
-        // Integer fields are always int
-        $quantity = $dto->getQuantity();
-        
-        // Handle nullable numeric fields
-        $discount = $dto->getDiscount(); // int|float|null
-        if ($discount !== null) {
-            // Already numeric, no conversion needed
-        }
-        
-        return Product::create([
-            'price' => $price,
-            'weight' => $weight,
-            'quantity' => $quantity,
-            'discount' => $discount,
-        ]);
-    }
-    
-    private function convertToFloat(string|int|float $value): float
-    {
-        return is_string($value) ? (float) $value : (float) $value;
-    }
-}
-```
-
-## Configuration
+## ⚙️ Configuration
 
 The package configuration is located in `config/request-dto-generator.php`:
 
@@ -118,11 +54,12 @@ return [
     'generate_accessors' => true,
     'readonly_properties' => true,
     'constructor_property_promotion' => true,
-    'property_visibility' => 'private', // 'private' or 'public'
+    'property_visibility' => 'private',
+    'generate_separate_dtos_for_arrays' => true,
 ];
 ```
 
-## Usage
+## 📖 Usage
 
 ### Basic Usage
 
@@ -181,127 +118,222 @@ use BellissimoPizza\RequestDtoGenerator\BaseDto;
 class CreateUserDto extends BaseDto
 {
     public function __construct(
-        private readonly string $organizationId,
-        private readonly string $orderId,
-        private readonly string $sum,
-        private readonly string $paymentTypeId,
-        private readonly string $code,
-        private readonly string $paymentTypeKind,
-        private readonly string $oldPaymentType,
-        private readonly string $newPaymentType,
-        private readonly bool $isProcessedExternally,
-        private readonly bool $isPrepay,
+        private readonly string $name,
+        private readonly string $email,
+        private readonly int $age,
+        private readonly bool $isActive,
+        private readonly ?array $profile = null,
+        private readonly array $tags = []
     ) {}
 
-    public function getOrganizationId(): string
+    public function getName(): string
     {
-        return $this->organizationId;
+        return $this->name;
     }
 
-    public function getOrderId(): string
+    public function getEmail(): string
     {
-        return $this->orderId;
+        return $this->email;
     }
 
-    // Note: Setters are not generated for readonly properties
-    // ... more getters (no setters for readonly properties)
+    public function getAge(): int
+    {
+        return $this->age;
+    }
+
+    public function getIsActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function getProfile(): ?array
+    {
+        return $this->profile;
+    }
+
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
 }
 ```
 
-### Advanced Usage
+### Advanced Usage with Typed Arrays
 
-#### Using the Trait
-
-Add the `GeneratesDto` trait to your Request classes for easy DTO conversion:
+#### Complex Request with Nested Structures
 
 ```php
 <?php
 
 namespace App\Http\Requests;
 
-use BellissimoPizza\RequestDtoGenerator\Traits\GeneratesDto;
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateUserRequest extends FormRequest
+class CreateOrderRequest extends FormRequest
 {
-    use GeneratesDto;
-
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'orderNumber' => 'required|string|max:50',
+            'orderDate' => 'required|date',
+            'totalAmount' => 'required|numeric',
+            'isPaid' => 'boolean',
+            
+            // Customer information
+            'customer' => 'required',
+            'customer.name' => 'required|string|max:255',
+            'customer.email' => 'required|email',
+            'customer.phone' => 'nullable|string|max:20',
+            
+            // Customer address
+            'customer.address' => 'required',
+            'customer.address.street' => 'required|string|max:100',
+            'customer.address.city' => 'required|string|max:50',
+            'customer.address.zipCode' => 'required|string|max:10',
+            'customer.address.country' => 'required|string|max:50',
+            
+            // Order items (typed array)
+            'items' => 'required|array|min:1',
+            'items.*.productId' => 'required|uuid',
+            'items.*.productName' => 'required|string|max:255',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unitPrice' => 'required|numeric|min:0',
+            'items.*.totalPrice' => 'required|numeric|min:0',
+            
+            // Item modifiers (nested typed array)
+            'items.*.modifiers' => 'nullable|array',
+            'items.*.modifiers.*.modifierId' => 'required|uuid',
+            'items.*.modifiers.*.name' => 'required|string|max:100',
+            'items.*.modifiers.*.price' => 'required|numeric',
+            
+            // Payment information (typed array)
+            'payments' => 'nullable|array',
+            'payments.*.paymentId' => 'required|uuid',
+            'payments.*.amount' => 'required|numeric|min:0',
+            'payments.*.method' => 'required|string|in:cash,card,online',
+            'payments.*.transactionId' => 'nullable|string|max:100',
+            
+            // Additional fields
+            'notes' => 'nullable|string|max:1000',
         ];
     }
 }
 ```
 
-Then in your controller:
+#### Generated DTOs
+
+The package will generate multiple DTO classes:
+
+**CreateOrderDto.php:**
+```php
+<?php
+
+namespace App\DTOs;
+
+use BellissimoPizza\RequestDtoGenerator\BaseDto;
+
+class CreateOrderDto extends BaseDto
+{
+    public function __construct(
+        private readonly string $orderNumber,
+        private readonly string $orderDate,
+        private readonly int|float $totalAmount,
+        private readonly bool $isPaid,
+        private readonly array $customer,
+        private readonly array $items,
+        private readonly ?array $payments = null,
+        private readonly ?string $notes = null
+    ) {}
+}
+```
+
+**ItemsDto.php:**
+```php
+<?php
+
+namespace App\DTOs;
+
+use BellissimoPizza\RequestDtoGenerator\BaseDto;
+
+class ItemsDto extends BaseDto
+{
+    public function __construct(
+        private readonly string $productId,
+        private readonly string $productName,
+        private readonly int $quantity,
+        private readonly int|float $unitPrice,
+        private readonly int|float $totalPrice,
+        private readonly ?array $modifiers = null
+    ) {}
+}
+```
+
+**ModifiersDto.php:**
+```php
+<?php
+
+namespace App\DTOs;
+
+use BellissimoPizza\RequestDtoGenerator\BaseDto;
+
+class ModifiersDto extends BaseDto
+{
+    public function __construct(
+        private readonly string $modifierId,
+        private readonly string $name,
+        private readonly int|float $price
+    ) {}
+}
+```
+
+**PaymentsDto.php:**
+```php
+<?php
+
+namespace App\DTOs;
+
+use BellissimoPizza\RequestDtoGenerator\BaseDto;
+
+class PaymentsDto extends BaseDto
+{
+    public function __construct(
+        private readonly string $paymentId,
+        private readonly int|float $amount,
+        private readonly string $method,
+        private readonly ?string $transactionId = null
+    ) {}
+}
+```
+
+### Using Generated DTOs
 
 ```php
 <?php
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CreateUserRequest;
-use App\Services\UserService;
+use App\Http\Requests\CreateOrderRequest;
+use App\DTOs\CreateOrderDto;
+use App\DTOs\ItemsDto;
+use App\DTOs\ModifiersDto;
+use App\DTOs\PaymentsDto;
 
-class UserController extends Controller
+class OrderController extends Controller
 {
-    public function store(CreateUserRequest $request, UserService $userService)
+    public function store(CreateOrderRequest $request)
     {
         // Convert Request to DTO
-        $userDto = $request->toDto();
+        $orderDto = CreateOrderDto::fromArray($request->validated());
         
         // Use DTO in your business logic
-        $user = $userService->createUser($userDto);
+        $order = $this->orderService->createOrder($orderDto);
         
-        return response()->json($user);
+        return response()->json($order);
     }
 }
 ```
 
-#### Custom Namespace and Directory
-
-```bash
-# Generate DTO with custom namespace
-php artisan dto:generate App\\Http\\Requests\\CreateUserRequest --namespace="App\\DataTransferObjects"
-
-# Generate DTO in custom directory
-php artisan dto:generate App\\Http\\Requests\\CreateUserRequest --directory="/path/to/custom/dto/directory"
-```
-
-### Base DTO Features
-
-The generated DTOs extend `BaseDto` which provides useful utility methods:
-
-```php
-$dto = new CreateUserDto('John Doe', 'john@example.com', 25, true);
-
-// Convert to array
-$array = $dto->toArray();
-
-// Convert to JSON
-$json = $dto->toJson();
-
-// Create from array
-$dto = CreateUserDto::fromArray($data);
-
-// Create from JSON
-$dto = CreateUserDto::fromJson($jsonString);
-
-// Get all property names
-$properties = $dto->getPropertyNames();
-
-// Check if property exists
-$hasName = $dto->hasProperty('name');
-
-// Get/set property values
-$name = $dto->getProperty('name');
-$dto->setProperty('name', 'Jane Doe');
-```
-
-## Command Options
+## 🎯 Command Options
 
 ### `dto:generate` Command
 
@@ -337,76 +369,65 @@ php artisan dto:generate CreateUserRequest --namespace="App\\DataTransferObjects
 php artisan dto:generate CreateUserRequest --directory="/custom/path"
 ```
 
-### Smart Class Discovery
+## 🔍 Smart Type Detection
 
-The package automatically finds Request classes by name across different namespaces:
+The package intelligently detects PHP types from Laravel validation rules:
 
-- `App\Http\Requests\CreateUserRequest`
-- `App\Requests\CreateUserRequest`
-- Any other namespace containing the class
+| Validation Rule | Detected Type |
+|----------------|---------------|
+| `string` | `string` |
+| `integer`, `int` | `int` |
+| `numeric` | `int\|float` |
+| `boolean`, `bool` | `bool` |
+| `array` | `array` |
+| `nullable` | Adds `?` to type |
+| `array:*` | `Type[]` (array of specific type) |
 
-If multiple classes with the same name are found, you'll be prompted to choose:
-
-```bash
-$ php artisan dto:generate CreateUserRequest
-
-Found multiple Request classes with the same name:
-
-1. App\Http\Requests\CreateUserRequest
-2. App\Admin\Requests\CreateUserRequest
-
-Please select which class to use (1-2): 1
-```
-
-## Advanced Type Detection
-
-The package intelligently detects PHP types from Laravel validation rules, handling complex scenarios:
-
-### Numeric Fields
-Laravel's `numeric` validation accepts integers and floats. The package correctly types these as `int|float`:
+### Advanced Type Detection Examples
 
 ```php
 // Request validation
-'price' => 'required|numeric', // Can accept 123 or 123.45
-
-// Generated DTO
-private readonly int|float $price,
+'price' => 'required|numeric',           // int|float
+'weight' => 'required|string|numeric',   // string|int|float
+'quantity' => 'required|integer',        // int
+'discount' => 'nullable|numeric|min:0',  // int|float|null
+'is_active' => 'required|boolean',       // bool
+'email' => 'required|email',             // string
+'uuid' => 'required|uuid',               // string
+'date' => 'required|date',               // string
+'json' => 'nullable|json',               // array|null
 ```
 
-### Mixed Type Scenarios
-When multiple validation rules suggest different types, the package resolves them intelligently:
+## 🏗️ Base DTO Features
+
+The generated DTOs extend `BaseDto` which provides useful utility methods:
 
 ```php
-// Request validation
-'weight' => 'required|string|numeric', // String that represents a number
+$dto = new CreateUserDto('John Doe', 'john@example.com', 25, true);
 
-// Generated DTO
-private readonly string|int|float $weight,
+// Convert to array
+$array = $dto->toArray();
+
+// Convert to JSON
+$json = $dto->toJson();
+
+// Create from array
+$dto = CreateUserDto::fromArray($data);
+
+// Create from JSON
+$dto = CreateUserDto::fromJson($jsonString);
+
+// Get all property names
+$properties = $dto->getPropertyNames();
+
+// Check if property exists
+$hasName = $dto->hasProperty('name');
+
+// Get property values
+$name = $dto->getProperty('name');
 ```
 
-### Boolean Rules
-Various boolean validation rules are correctly mapped:
-
-```php
-// Request validation
-'is_active' => 'required|boolean',     // bool
-'accept_terms' => 'required|accepted', // bool
-'newsletter' => 'nullable|boolean',    // bool|null
-```
-
-### Special Formats
-Laravel's format-specific rules are properly typed:
-
-```php
-// Request validation
-'email' => 'required|email',        // string
-'uuid' => 'required|uuid',          // string
-'ip' => 'nullable|ip',              // string|null
-'date' => 'required|date',          // string
-'json' => 'nullable|json',          // array|null
-```
-
-## Property Visibility
+## 🔒 Property Visibility
 
 The package supports two visibility levels for readonly properties:
 
@@ -451,325 +472,57 @@ Set the visibility in `config/request-dto-generator.php`:
 'property_visibility' => 'public',  // Alternative: public readonly
 ```
 
-### When to Use Each
+## 🎭 ValidationSchemaGenerator
 
-**Use Private Readonly when:**
-- You need data encapsulation
-- You plan to add logic to getter methods
-- You want to control data access
-- You follow OOP principles
+The package uses an advanced `ValidationSchemaGenerator` that converts Laravel validation rules into JSON Schema format, enabling:
 
-**Use Public Readonly when:**
-- You need simple, fast data access
-- DTOs are used in templates (Blade, Twig)
-- Performance is critical
-- DTOs are simple data containers
+- **Complex nested structures** support
+- **Typed arrays** with separate DTO classes
+- **Proper type hinting** for all data types
+- **Recursive DTO generation** for deeply nested objects
+- **Array item DTOs** for structured data
 
-## Constructor Property Promotion
+### How it works:
 
-By default, the package generates DTOs using PHP 8's constructor property promotion feature. This creates a clean, concise syntax where properties are declared as constructor parameters with configurable visibility.
+1. **Parse Laravel Rules**: Converts validation rules to JSON Schema
+2. **Generate DTOs**: Creates PHP classes from JSON Schema
+3. **Type Detection**: Maps validation rules to PHP types
+4. **Nested Structures**: Handles complex object hierarchies
+5. **Array Processing**: Creates separate DTOs for array items
 
-### Benefits of Constructor Property Promotion
+## ⚠️ Known Limitations
 
-- **Cleaner Code**: Properties are declared and initialized in one place
-- **Less Boilerplate**: No need for separate property declarations and constructor assignments
-- **Immutability**: Properties are automatically readonly and private
-- **Modern PHP**: Uses the latest PHP 8+ features for better performance and readability
+This package is still under development and has some limitations:
 
-### Configuration
+- **Complex validation rules** may not be fully supported
+- **Custom validation rules** might not be recognized
+- **Some edge cases** in nested structures may not work perfectly
+- **Performance** could be improved for large validation rule sets
+- **IDE support** for generated DTOs could be enhanced
 
-You can control constructor property promotion in the configuration:
+**We're working on improving these areas and welcome your feedback!**
 
-```php
-// config/request-dto-generator.php
-'constructor_property_promotion' => true, // Enable constructor property promotion (default)
-```
+## 🧪 Testing
 
-When `constructor_property_promotion` is enabled:
-- Properties are declared as `private readonly` constructor parameters
-- No separate property declarations are generated
-- Constructor body is empty `{}`
-- Only getters are generated (no setters)
-
-## Readonly Properties
-
-By default, the package generates DTOs with readonly properties for immutability. This ensures that once a DTO is created, its values cannot be modified, which is ideal for data transfer objects.
-
-### Benefits of Readonly Properties
-
-- **Immutability**: Once created, DTO values cannot be accidentally modified
-- **Thread Safety**: Readonly objects are inherently thread-safe
-- **Clear Intent**: Makes it obvious that the object represents immutable data
-- **Better Performance**: PHP can optimize readonly properties
-
-### Configuration
-
-You can control readonly behavior in the configuration:
-
-```php
-// config/request-dto-generator.php
-'readonly_properties' => true, // Enable readonly properties (default)
-```
-
-When `readonly_properties` is enabled:
-- Properties are declared as `public readonly` with comma formatting (except the last property)
-- Only getters are generated (no setters)
-- Properties can only be set in the constructor
-- The `setProperty()` method will throw an exception for readonly properties
-
-### Working with Constructor Property Promotion DTOs
-
-```php
-// Create DTO (values can only be set in constructor)
-$dto = new CreateUserDto(
-    organizationId: 'org-123',
-    orderId: 'order-456',
-    sum: '100.00',
-    paymentTypeId: 'pay-789',
-    code: 'CODE123',
-    paymentTypeKind: 'credit_card',
-    oldPaymentType: 'cash',
-    newPaymentType: 'card',
-    isProcessedExternally: true,
-    isPrepay: false
-);
-
-// Read values through getters
-$organizationId = $dto->getOrganizationId();
-$orderId = $dto->getOrderId();
-
-// Properties are private, so direct access won't work
-// $dto->organizationId; // This will cause an error!
-
-// This will throw an exception for readonly properties
-// $dto->setProperty('organizationId', 'new-org'); // Runtime exception!
-
-// Check if property is readonly
-$isReadonly = $dto->isPropertyReadonly('organizationId'); // true
-```
-
-## Type Detection
-
-The package automatically detects PHP types from Laravel validation rules:
-
-| Validation Rule | Detected Type |
-|----------------|---------------|
-| `string` | `string` |
-| `integer`, `int` | `int` |
-| `numeric`, `decimal` | `float` |
-| `boolean`, `bool` | `bool` |
-| `array` | `array` |
-| `nullable` | Adds `?` to type |
-| `array:*` | `Type[]` (array of specific type) |
-
-## Customization
-
-### Custom Stubs
-
-You can customize the generated DTO structure by publishing and modifying the stub files:
+The package includes comprehensive test examples:
 
 ```bash
-php artisan vendor:publish --provider="BellissimoPizza\RequestDtoGenerator\RequestDtoGeneratorServiceProvider" --tag="stubs"
+# Run the simple final example
+php examples/simple-final-example.php
+
+# Test Artisan command functionality
+php examples/test-artisan-direct.php
 ```
 
-This will copy the stub files to `stubs/request-dto-generator/` where you can modify them.
+## 📚 Additional Documentation
 
-### Custom Base Class
-
-You can create your own base DTO class and configure it in the config file:
-
-```php
-// config/request-dto-generator.php
-'dto_base_class' => 'App\\DTOs\\BaseDto',
-```
-
-## Examples
-
-### Typed Arrays Example
-
-```php
-<?php
-
-namespace App\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class CreateOrderRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return [
-            'customer_name' => 'required|string|max:255',
-            'customer_email' => 'required|email',
-            'items' => 'required|array',
-            'items.*.productId' => 'required|uuid',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-            'combos' => 'nullable|array',
-            'combos.*.id' => 'required|uuid',
-            'combos.*.amount' => 'required|integer|min:1',
-            'payments' => 'nullable|array',
-            'payments.*.paymentTypeId' => 'required|uuid',
-            'payments.*.amount' => 'required|numeric|min:0',
-        ];
-    }
-}
-```
-
-Generated DTOs:
-
-**ItemDto.php:**
-```php
-<?php
-
-namespace App\DTOs;
-
-use BellissimoPizza\RequestDtoGenerator\BaseDto;
-
-class ItemDto extends BaseDto
-{
-    public function __construct(
-        private readonly string $productId,
-        private readonly int $quantity,
-        private readonly int|float $price
-    ) {}
-}
-```
-
-**ComboDto.php:**
-```php
-<?php
-
-namespace App\DTOs;
-
-use BellissimoPizza\RequestDtoGenerator\BaseDto;
-
-class ComboDto extends BaseDto
-{
-    public function __construct(
-        private readonly string $id,
-        private readonly int $amount
-    ) {}
-}
-```
-
-**PaymentDto.php:**
-```php
-<?php
-
-namespace App\DTOs;
-
-use BellissimoPizza\RequestDtoGenerator\BaseDto;
-
-class PaymentDto extends BaseDto
-{
-    public function __construct(
-        private readonly string $paymentTypeId,
-        private readonly int|float $amount
-    ) {}
-}
-```
-
-**CreateOrderDto.php:**
-```php
-<?php
-
-namespace App\DTOs;
-
-use BellissimoPizza\RequestDtoGenerator\BaseDto;
-use App\DTOs\ItemDto;
-use App\DTOs\ComboDto;
-use App\DTOs\PaymentDto;
-
-class CreateOrderDto extends BaseDto
-{
-    public function __construct(
-        private readonly string $customerName,
-        private readonly string $customerEmail,
-        private readonly ?ItemDto[] $items = null,
-        private readonly ?ComboDto[] $combos = null,
-        private readonly ?PaymentDto[] $payments = null
-    ) {}
-}
-```
-
-### Complex Request with Nested Data
-
-```php
-<?php
-
-namespace App\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateProductRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'price' => 'required|numeric|min:0',
-            'category_id' => 'required|integer|exists:categories,id',
-            'images' => 'array|max:5',
-            'images.*' => 'url',
-            'specifications' => 'nullable|array',
-            'specifications.*.name' => 'required|string',
-            'specifications.*.value' => 'required|string',
-            'is_featured' => 'boolean',
-            'tags' => 'array',
-            'tags.*' => 'string|max:50',
-        ];
-    }
-}
-```
-
-Generated DTO:
-
-```php
-<?php
-
-namespace App\DTOs;
-
-use BellissimoPizza\RequestDtoGenerator\BaseDto;
-
-class UpdateProductDto extends BaseDto
-{
-    public function __construct(
-        private readonly string $name,
-        private readonly ?string $description,
-        private readonly float $price,
-        private readonly int $category_id,
-        private readonly array $images,
-        private readonly ?array $specifications,
-        private readonly bool $is_featured,
-        private readonly array $tags,
-    ) {}
-
-    // Getters (no setters for readonly properties)...
-}
-```
-
-## Documentation
-
-### 📚 Additional Guides
-
+- **[Artisan Usage Guide](ARTISAN_USAGE.md)** - Complete Artisan command usage guide
 - **[Type Errors Guide](TYPE_ERRORS_GUIDE.md)** - Complete guide to type errors and how to avoid them
 - **[Visibility Guide](VISIBILITY_GUIDE.md)** - Detailed comparison of public vs private readonly properties
 - **[Typing Improvements](TYPING_IMPROVEMENTS.md)** - Overview of advanced type detection features
 - **[Nested Structures Guide](NESTED_STRUCTURES_GUIDE.md)** - Complete guide to nested structures and complex data handling
 
-### 📁 Examples
-
-- **[Advanced Validation Examples](examples/advanced-validation-examples.php)** - Complex validation scenarios
-- **[Generated DTO Examples](examples/generated-dto-examples.php)** - Examples of generated DTOs with improved typing
-- **[Type Handling Demo](examples/type-handling-demo.php)** - Complete demonstration of type handling
-- **[Visibility Demo](examples/visibility-demo-simple.php)** - Simple demonstration of property visibility differences
-- **[Error Examples](examples/error-examples.php)** - Examples of type errors you might encounter
-- **[Nested Structures Example](examples/nested-structures-example.php)** - Complex nested structures example
-- **[Usage Examples](examples/usage-examples.md)** - Comprehensive usage examples
-
-### 🔧 Configuration Options
+## 🔧 Configuration Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -784,10 +537,11 @@ class UpdateProductDto extends BaseDto
 | `readonly_properties` | `true` | Make properties readonly for immutability |
 | `constructor_property_promotion` | `true` | Use PHP 8+ constructor property promotion |
 | `property_visibility` | `'private'` | Property visibility: `'private'` or `'public'` |
+| `generate_separate_dtos_for_arrays` | `true` | Generate separate DTO classes for array items |
 
-### 🚀 Quick Start Examples
+## 🚀 Quick Start Examples
 
-#### Basic Usage
+### Basic Usage
 ```bash
 # Generate DTO for a specific Request class
 php artisan dto:generate CreateUserRequest
@@ -799,7 +553,7 @@ php artisan dto:generate --all
 php artisan dto:generate --all --force
 ```
 
-#### Advanced Usage
+### Advanced Usage
 ```bash
 # Custom namespace
 php artisan dto:generate CreateUserRequest --namespace="App\\DataTransferObjects"
@@ -808,9 +562,9 @@ php artisan dto:generate CreateUserRequest --namespace="App\\DataTransferObjects
 php artisan dto:generate CreateUserRequest --directory="/custom/dto/path"
 ```
 
-### 🎯 Key Features
+## 🎯 Key Features
 
-#### Smart Type Detection
+### Smart Type Detection
 - `numeric` → `int|float` (numbers only)
 - `string` → `string` (strings only)
 - `string|numeric` → `string|int|float` (mixed types)
@@ -818,11 +572,7 @@ php artisan dto:generate CreateUserRequest --directory="/custom/dto/path"
 - `array` → `array`
 - `nullable` → adds `|null` to type
 
-#### Property Visibility Options
-- **Private Readonly** (default): Access only through getter methods
-- **Public Readonly**: Direct property access + getter methods
-
-#### Constructor Property Promotion
+### Constructor Property Promotion
 ```php
 // Generated with constructor property promotion
 public function __construct(
@@ -832,7 +582,7 @@ public function __construct(
 ) {}
 ```
 
-#### Typed Arrays Support
+### Typed Arrays Support
 ```php
 // Request with array validation rules
 'items' => 'required|array',
@@ -856,22 +606,25 @@ class CreateOrderDto extends BaseDto {
 }
 ```
 
-#### Nested Structures Support
+### Nested Structures Support
 ```php
 // Request with nested validation rules
-'order.deliveryPoint.coordinates.latitude' => 'required|numeric',
-'order.deliveryPoint.coordinates.longitude' => 'required|numeric',
-'order.items.*.productId' => 'required|uuid',
-'order.items.*.quantity' => 'required|integer',
+'customer.address.street' => 'required|string',
+'customer.address.city' => 'required|string',
+'items.*.modifiers.*.name' => 'required|string',
 
 // Generated DTO with nested structures
 public function __construct(
-    private readonly array $order, // Nested structure
-    private readonly array $items, // Array of nested objects
+    private readonly array $customer, // Nested structure
+    private readonly array $items,    // Array of nested objects
 ) {}
 ```
 
-## Contributing
+## 🤝 Contributing
+
+We actively welcome contributions and suggestions! This package is not perfect and we're always looking to improve it.
+
+### How to Contribute
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -879,11 +632,34 @@ public function __construct(
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+### What We're Looking For
+
+- 🐛 **Bug fixes** - Help us make the package more stable
+- ✨ **New features** - Suggest and implement new functionality
+- 📚 **Documentation** - Improve guides and examples
+- 🧪 **Tests** - Add more test coverage
+- 💡 **Ideas** - Share your thoughts on improvements
+- 🔧 **Performance** - Optimize existing code
+
+### Areas for Improvement
+
+- Better error handling and validation
+- More validation rule types support
+- Enhanced nested structure handling
+- Performance optimizations
+- Additional configuration options
+- Better IDE support and autocompletion
+
+**Your feedback and contributions are highly appreciated!** 🙏
+
+## 📄 License
 
 This package is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
-## Support
+## ⭐ Support
 
 If you find this package helpful, please consider giving it a ⭐ on GitHub!
-# laravel-request-dto-generator
+
+---
+
+**Laravel Request DTO Generator** - Automatically generate type-safe DTOs from your Laravel Request validation rules with advanced nested structure support and modern PHP 8+ features.

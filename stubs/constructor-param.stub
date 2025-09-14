@@ -1,0 +1,1 @@
+        {{ visibility }} readonly {{ nullable }}{{ type }} ${{ name }}{{ default }}{{ comma }}
