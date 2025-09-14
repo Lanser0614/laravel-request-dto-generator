@@ -1,10 +1,10 @@
 <?php
 
-namespace App\DTOs\Api\v1;
+namespace App\DTOs;
 
 use BellissimoPizza\RequestDtoGenerator\BaseDto;
-use App\DTOs\Api\v1\ItemsDto;
-use App\DTOs\Api\v1\PaymentsDto;
+use App\DTOs\ItemsDto;
+use App\DTOs\PaymentsDto;
 class SimpleOrderDto extends BaseDto
 {
 

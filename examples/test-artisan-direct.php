@@ -13,7 +13,7 @@ use Illuminate\Filesystem\Filesystem;
 
 // Configuration
 $config = [
-    'dto_namespace' => 'App\\DTOs\\Api\\v1',
+    'dto_namespace' => 'App\\DTOs',
     'dto_directory' => __DIR__ . '/generated',
     'request_directory' => __DIR__ . '/Http/Requests',
     'dto_base_class' => 'BellissimoPizza\\RequestDtoGenerator\\BaseDto',
@@ -103,7 +103,7 @@ try {
         ]
     ];
     
-    $dto = \App\DTOs\Api\v1\TestDto::fromArray($testData);
+    $dto = \App\DTOs\TestDto::fromArray($testData);
     echo "✅ DTO created successfully!\n";
     echo "   Name: " . $dto->getName() . "\n";
     echo "   Email: " . $dto->getEmail() . "\n";

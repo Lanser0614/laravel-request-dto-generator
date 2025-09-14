@@ -375,6 +375,46 @@ php artisan dto:generate CreateUserRequest --namespace="App\\DataTransferObjects
 php artisan dto:generate CreateUserRequest --directory="/custom/path"
 ```
 
+### Smart Class Discovery
+
+The package automatically finds Request classes by name across different namespaces and subdirectories:
+
+- `App\Http\Requests\CreateUserRequest` (root directory)
+- `App\Http\Requests\Api\CreateUserRequest` (subdirectory)
+- `App\Http\Requests\Admin\CreateUserRequest` (subdirectory)
+- `App\Requests\CreateUserRequest` (different namespace)
+- Any other namespace containing the class
+
+**Search patterns supported:**
+- `SentCouponRequest` - finds `App\Http\Requests\Api\SentCouponRequest`
+- `SentCoupon` - finds `App\Http\Requests\Api\SentCouponRequest`
+- `Api\SentCouponRequest` - finds `App\Http\Requests\Api\SentCouponRequest`
+- `App\Http\Requests\Api\SentCouponRequest` - exact match
+
+If multiple classes with the same name are found, you'll be prompted to choose:
+
+### Smart Namespace Mapping
+
+**NEW FEATURE**: The package now automatically maps Request class namespaces to DTO namespaces:
+
+- `App\Http\Requests\TestRequest` → `App\DTOs\TestDto`
+- `App\Http\Requests\Api\SentCouponRequest` → `App\DTOs\Api\SentCouponDto`
+- `App\Http\Requests\Coupon\CreateCouponRequest` → `App\DTOs\Coupon\CreateCouponDto`
+
+This means DTOs are organized in the same directory structure as your Request classes, making your codebase more organized and maintainable.
+
+```bash
+$ php artisan dto:generate CreateUserRequest
+
+Found multiple Request classes with the same name:
+
+1. App\Http\Requests\CreateUserRequest
+2. App\Http\Requests\Api\CreateUserRequest
+3. App\Admin\Requests\CreateUserRequest
+
+Please select which class to use (1-3): 1
+```
+
 ## 🔍 Smart Type Detection
 
 The package intelligently detects PHP types from Laravel validation rules:
@@ -521,10 +561,15 @@ php examples/test-artisan-direct.php
 
 # Test Laravel 9 compatibility
 php examples/test-laravel9-compatibility.php
+
+# Test Request class discovery in subdirectories
+php examples/test-search-logic.php
 ```
 
 ## 📚 Additional Documentation
 
+- **[Command Usage Guide](COMMAND_USAGE.md)** - Complete guide to using the dto:generate command
+- **[Namespace Guide](NAMESPACE_GUIDE.md)** - Complete guide to DTO namespaces and organization
 - **[Compatibility Guide](COMPATIBILITY.md)** - Laravel 9.x, 10.x, 11.x compatibility information
 - **[Artisan Usage Guide](ARTISAN_USAGE.md)** - Complete Artisan command usage guide
 - **[Type Errors Guide](TYPE_ERRORS_GUIDE.md)** - Complete guide to type errors and how to avoid them

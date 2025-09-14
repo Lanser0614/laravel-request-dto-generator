@@ -213,7 +213,10 @@ class GenerateDtoFromRequestCommand extends Command
             // Check if class name matches (with or without "Request" suffix)
             if ($baseName === $className || 
                 $baseName === $className . 'Request' ||
-                (str_ends_with($className, 'Request') && $baseName === $className)) {
+                (str_ends_with($className, 'Request') && $baseName === $className) ||
+                $requestClass === $className ||
+                $requestClass === 'App\\Http\\Requests\\' . $className ||
+                $requestClass === 'App\\Http\\Requests\\' . $className . 'Request') {
                 $foundClasses[] = $requestClass;
             }
         }

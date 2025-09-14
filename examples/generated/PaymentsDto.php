@@ -1,6 +1,6 @@
 <?php
 
-namespace App\DTOs\Api\v1;
+namespace App\DTOs;
 
 use BellissimoPizza\RequestDtoGenerator\BaseDto;
 class PaymentsDto extends BaseDto

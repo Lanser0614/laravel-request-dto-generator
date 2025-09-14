@@ -1,9 +1,8 @@
 <?php
 
-namespace App\DTOs\Api\v1;
+namespace App\DTOs;
 
 use BellissimoPizza\RequestDtoGenerator\BaseDto;
-use App\DTOs\Api\v1\ModifiersDto;
 class ItemsDto extends BaseDto
 {
 
@@ -13,15 +12,13 @@ class ItemsDto extends BaseDto
      * @param int $quantity
      * @param int|float $unitPrice
      * @param int|float $totalPrice
-     * @param ModifiersDto[] $modifiers
      */
     public function __construct(
         private readonly string $productId,
         private readonly string $productName,
         private readonly int $quantity,
         private readonly int|float $unitPrice,
-        private readonly int|float $totalPrice,
-        private readonly ?array $modifiers = null
+        private readonly int|float $totalPrice
     ) {}
 
     /**
@@ -37,8 +34,7 @@ class ItemsDto extends BaseDto
             productName: $data['productName'],
             quantity: $data['quantity'],
             unitPrice: $data['unitPrice'],
-            totalPrice: $data['totalPrice'],
-            modifiers: array_map(fn($item) => ModifiersDto::fromArray($item), $data['modifiers'] ?? [])
+            totalPrice: $data['totalPrice']
         );
     }
 
@@ -80,13 +76,5 @@ class ItemsDto extends BaseDto
     public function getTotalPrice(): int|float
     {
         return $this->totalPrice;
-    }
-
-    /**
-     * @return ModifiersDto[]
-     */
-    public function getModifiers(): ?array
-    {
-        return $this->modifiers;
     }
 }

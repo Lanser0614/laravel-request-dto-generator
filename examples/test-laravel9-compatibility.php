@@ -13,7 +13,7 @@ use Illuminate\Filesystem\Filesystem;
 
 // Configuration
 $config = [
-    'dto_namespace' => 'App\\DTOs\\Api\\v1',
+    'dto_namespace' => 'App\\DTOs',
     'dto_directory' => __DIR__ . '/generated',
     'request_directory' => __DIR__ . '/Http/Requests',
     'dto_base_class' => 'BellissimoPizza\\RequestDtoGenerator\\BaseDto',
@@ -141,7 +141,7 @@ try {
         ]
     ];
     
-    $dto = \App\DTOs\Api\v1\TestDto::fromArray($testData);
+    $dto = \App\DTOs\TestDto::fromArray($testData);
     echo "✅ DTO creation: Success\n";
     echo "✅ DTO functionality: Name = " . $dto->getName() . "\n";
     echo "✅ JSON serialization: " . strlen(json_encode($dto)) . " characters\n";

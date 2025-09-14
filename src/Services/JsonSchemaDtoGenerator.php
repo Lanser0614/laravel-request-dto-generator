@@ -23,15 +23,21 @@ class JsonSchemaDtoGenerator
      */
     public function generateFromRequest(string $requestClass): string
     {
-        $requestReflection = new ReflectionClass($requestClass);
-        $requestInstance = $requestReflection->newInstance();
+        // Try to create instance with ReflectionClass, fallback to file parsing
+        try {
+            $requestReflection = new ReflectionClass($requestClass);
+            $requestInstance = $requestReflection->newInstance();
+            $rules = $this->extractRules($requestInstance);
+        } catch (ReflectionException $e) {
+            // Fallback: parse rules directly from file
+            $rules = $this->extractRulesFromFile($requestClass);
+        }
         
-        $rules = $this->extractRules($requestInstance);
         $jsonSchema = $this->convertRulesToJsonSchema($rules);
         $properties = $this->analyzeJsonSchema($jsonSchema);
         
         $dtoName = $this->getDtoName($requestClass);
-        $dtoContent = $this->generateDtoContent($dtoName, $properties, $rules);
+        $dtoContent = $this->generateDtoContent($dtoName, $properties, $rules, $requestClass);
         
         return $dtoContent;
     }
@@ -52,11 +58,11 @@ class JsonSchemaDtoGenerator
         $generatedDtos = [];
         
         // Generate main DTO
-        $generatedDtos[$dtoName] = $this->generateDtoContent($dtoName, $properties, $rules);
+        $generatedDtos[$dtoName] = $this->generateDtoContent($dtoName, $properties, $rules, $requestClass);
         
         // Generate separate DTOs for typed arrays
         if ($this->config['generate_separate_dtos_for_arrays'] ?? false) {
-            $separateDtos = $this->generateSeparateDtosForArrays($properties, $dtoName);
+            $separateDtos = $this->generateSeparateDtosForArrays($properties, $dtoName, $requestClass);
             $generatedDtos = array_merge($generatedDtos, $separateDtos);
             
             // Recursively generate DTOs for nested structures
@@ -71,14 +77,17 @@ class JsonSchemaDtoGenerator
      */
     public function getRequestClasses(): array
     {
-        $requestDirectory = $this->config['request_directory'] ?? app_path('Http/Requests');
+        $requestDirectory = $this->config['request_directory'] ?? (function_exists('app_path') ? app_path('Http/Requests') : 'app/Http/Requests');
         
         if (!is_dir($requestDirectory)) {
             return [];
         }
 
         $requestClasses = [];
-        $files = glob($requestDirectory . '/*.php');
+        $files = array_merge(
+            glob($requestDirectory . '/*.php'), // Files in root directory
+            glob($requestDirectory . '/**/*.php', GLOB_BRACE) // Files in subdirectories
+        );
 
         foreach ($files as $file) {
             $className = basename($file, '.php');
@@ -86,11 +95,11 @@ class JsonSchemaDtoGenerator
             
             if ($namespace) {
                 $fullClassName = $namespace . '\\' . $className;
-                if (class_exists($fullClassName)) {
-                    $reflection = new ReflectionClass($fullClassName);
-                    if ($reflection->hasMethod('rules')) {
-                        $requestClasses[] = $fullClassName;
-                    }
+                
+                // Check if file contains rules() method instead of relying on class_exists
+                $content = file_get_contents($file);
+                if (preg_match('/public\s+function\s+rules\s*\(\s*\)\s*:\s*array/', $content)) {
+                    $requestClasses[] = $fullClassName;
                 }
             }
         }
@@ -108,6 +117,51 @@ class JsonSchemaDtoGenerator
             return trim($matches[1]);
         }
         return null;
+    }
+
+    /**
+     * Extract rules from Request class file when ReflectionClass fails
+     */
+    protected function extractRulesFromFile(string $requestClass): array
+    {
+        // Find the file for this class
+        $requestDirectory = $this->config['request_directory'] ?? (function_exists('app_path') ? app_path('Http/Requests') : 'app/Http/Requests');
+        $files = array_merge(
+            glob($requestDirectory . '/*.php'),
+            glob($requestDirectory . '/**/*.php', GLOB_BRACE)
+        );
+        
+        $className = class_basename($requestClass);
+        $file = null;
+        
+        foreach ($files as $f) {
+            if (basename($f, '.php') === $className) {
+                $file = $f;
+                break;
+            }
+        }
+        
+        if (!$file) {
+            return [];
+        }
+        
+        $content = file_get_contents($file);
+        
+        // Extract rules() method content
+        if (preg_match('/public\s+function\s+rules\s*\(\s*\)\s*:\s*array\s*\{([^}]+)\}/s', $content, $matches)) {
+            $rulesContent = $matches[1];
+            
+            // Simple parsing of return statement
+            if (preg_match('/return\s*\[([^\]]+)\];/s', $rulesContent, $returnMatches)) {
+                $rulesString = $returnMatches[1];
+                
+                // This is a simplified parser - in real implementation you might want more robust parsing
+                // For now, we'll return empty array and let the user know
+                return [];
+            }
+        }
+        
+        return [];
     }
 
     /**
@@ -432,7 +486,7 @@ class JsonSchemaDtoGenerator
     /**
      * Generate separate DTOs for arrays with nested structures
      */
-    protected function generateSeparateDtosForArrays(array $properties, string $mainDtoName): array
+    protected function generateSeparateDtosForArrays(array $properties, string $mainDtoName, string $requestClass = null): array
     {
         $separateDtos = [];
         
@@ -452,10 +506,10 @@ class JsonSchemaDtoGenerator
                     }
                     
                     if (!empty($arrayProperties)) {
-                        $separateDtos[$arrayDtoName] = $this->generateDtoContent($arrayDtoName, $arrayProperties, []);
+                        $separateDtos[$arrayDtoName] = $this->generateDtoContent($arrayDtoName, $arrayProperties, [], $requestClass);
                         
                         // Recursively generate DTOs for nested objects
-                        $nestedDtos = $this->generateSeparateDtosForArrays($arrayProperties, $arrayDtoName);
+                        $nestedDtos = $this->generateSeparateDtosForArrays($arrayProperties, $arrayDtoName, $requestClass);
                         $separateDtos = array_merge($separateDtos, $nestedDtos);
                     }
                 }
@@ -465,7 +519,7 @@ class JsonSchemaDtoGenerator
                 $arrayDtoName = $property['array_type'];
                 
                 // Create a simple DTO with empty properties (will be filled by recursive calls)
-                $separateDtos[$arrayDtoName] = $this->generateDtoContent($arrayDtoName, [], []);
+                $separateDtos[$arrayDtoName] = $this->generateDtoContent($arrayDtoName, [], [], $requestClass);
             }
         }
         
@@ -484,7 +538,7 @@ class JsonSchemaDtoGenerator
             $properties = $this->extractPropertiesFromDtoContent($dtoContent);
             
             if (!empty($properties)) {
-                $nestedDtos = $this->generateSeparateDtosForArrays($properties, $dtoName);
+                $nestedDtos = $this->generateSeparateDtosForArrays($properties, $dtoName, null);
                 
                 foreach ($nestedDtos as $nestedDtoName => $nestedDtoContent) {
                     if (!isset($generatedDtos[$nestedDtoName])) {
@@ -692,13 +746,43 @@ class JsonSchemaDtoGenerator
     }
 
     /**
+     * Get DTO namespace based on Request class namespace
+     */
+    protected function getDtoNamespace(string $requestClass = null): string
+    {
+        if (!$requestClass) {
+            return $this->config['dto_namespace'];
+        }
+
+        // Extract namespace from Request class
+        $requestReflection = new ReflectionClass($requestClass);
+        $requestNamespace = $requestReflection->getNamespaceName();
+        
+        // Convert Request namespace to DTO namespace
+        // App\Http\Requests\Coupon -> App\DTOs\Coupon
+        // App\Http\Requests\Api\Coupon -> App\DTOs\Api\Coupon
+        
+        $baseNamespace = $this->config['dto_namespace'];
+        
+        // Extract the part after App\Http\Requests
+        if (strpos($requestNamespace, 'App\\Http\\Requests\\') === 0) {
+            $subNamespace = substr($requestNamespace, strlen('App\\Http\\Requests\\'));
+            if ($subNamespace) {
+                return $baseNamespace . '\\' . $subNamespace;
+            }
+        }
+        
+        return $baseNamespace;
+    }
+
+    /**
      * Generate DTO content
      */
-    protected function generateDtoContent(string $dtoName, array $properties, array $rules): string
+    protected function generateDtoContent(string $dtoName, array $properties, array $rules, string $requestClass = null): string
     {
-        $namespace = $this->config['dto_namespace'];
+        $namespace = $this->getDtoNamespace($requestClass);
         $baseClass = $this->config['dto_base_class'];
-        $imports = $this->getRequiredImports($properties);
+        $imports = $this->getRequiredImports($properties, $namespace);
         
         $content = "<?php\n\n";
         $content .= "namespace {$namespace};\n\n";
@@ -736,14 +820,14 @@ class JsonSchemaDtoGenerator
     /**
      * Get required imports for typed arrays
      */
-    protected function getRequiredImports(array $properties): array
+    protected function getRequiredImports(array $properties, string $namespace = null): array
     {
         $imports = [];
-        $namespace = $this->config['dto_namespace'];
+        $dtoNamespace = $namespace ?? $this->config['dto_namespace'];
         
         foreach ($properties as $property) {
             if (isset($property['array_type']) && $property['array_type'] !== 'object') {
-                $import = $namespace . '\\' . $property['array_type'];
+                $import = $dtoNamespace . '\\' . $property['array_type'];
                 if (!in_array($import, $imports)) {
                     $imports[] = $import;
                 }

@@ -53,7 +53,7 @@ class SimpleOrderRequest
 
 // Configuration
 $config = [
-    'dto_namespace' => 'App\\DTOs\\Api\\v1',
+    'dto_namespace' => 'App\\DTOs',
     'dto_directory' => __DIR__ . '/generated',
     'request_directory' => __DIR__,
     'dto_base_class' => 'BellissimoPizza\\RequestDtoGenerator\\BaseDto',
@@ -138,7 +138,7 @@ try {
     
     // Test 1: Create DTO from array
     echo "1️⃣ Creating DTO from validated data...\n";
-    $orderDto = \App\DTOs\Api\v1\SimpleOrderDto::fromArray($validatedData);
+    $orderDto = \App\DTOs\SimpleOrderDto::fromArray($validatedData);
     echo "✅ DTO created successfully!\n";
     echo "   Order Number: " . $orderDto->getOrderNumber() . "\n";
     echo "   Total Amount: $" . $orderDto->getTotalAmount() . "\n";
