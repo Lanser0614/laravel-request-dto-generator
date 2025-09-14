@@ -17,22 +17,28 @@ A Laravel package that automatically generates Data Transfer Objects (DTOs) from
 - 📦 **Constructor Property Promotion**: Modern PHP 8+ syntax support
 - 🔒 **Readonly Properties**: Immutable DTOs for data integrity
 - 🎭 **ValidationSchemaGenerator**: Advanced JSON Schema generation from Laravel validation rules
+- 🔄 **Laravel 9+ Support**: Compatible with Laravel 9.x, 10.x, and 11.x
 
 ## 🚀 Installation
 
-1. Install the package via Composer:
+### Requirements
+
+- PHP 8.0 or higher
+- Laravel 9.x, 10.x, or 11.x
+
+### Install the package via Composer:
 
 ```bash
 composer require bellissimopizza/laravel-request-dto-generator
 ```
 
-2. Publish the configuration file:
+### Publish the configuration file:
 
 ```bash
 php artisan vendor:publish --provider="BellissimoPizza\RequestDtoGenerator\RequestDtoGeneratorServiceProvider" --tag="config"
 ```
 
-3. (Optional) Publish stub templates for customization:
+### (Optional) Publish stub templates for customization:
 
 ```bash
 php artisan vendor:publish --provider="BellissimoPizza\RequestDtoGenerator\RequestDtoGeneratorServiceProvider" --tag="stubs"
@@ -512,10 +518,14 @@ php examples/simple-final-example.php
 
 # Test Artisan command functionality
 php examples/test-artisan-direct.php
+
+# Test Laravel 9 compatibility
+php examples/test-laravel9-compatibility.php
 ```
 
 ## 📚 Additional Documentation
 
+- **[Compatibility Guide](COMPATIBILITY.md)** - Laravel 9.x, 10.x, 11.x compatibility information
 - **[Artisan Usage Guide](ARTISAN_USAGE.md)** - Complete Artisan command usage guide
 - **[Type Errors Guide](TYPE_ERRORS_GUIDE.md)** - Complete guide to type errors and how to avoid them
 - **[Visibility Guide](VISIBILITY_GUIDE.md)** - Detailed comparison of public vs private readonly properties
