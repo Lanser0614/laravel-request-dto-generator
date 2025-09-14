@@ -3,6 +3,7 @@
     "description": "A Laravel package to automatically generate DTOs from Request files",
     "type": "library",
     "license": "MIT",
+    "version": "2.1.0",
     "keywords": ["laravel", "dto", "request", "validation", "generator"],
     "authors": [
         {

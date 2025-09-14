@@ -3,6 +3,7 @@
 namespace BellissimoPizza\RequestDtoGenerator;
 
 use BellissimoPizza\RequestDtoGenerator\Commands\GenerateDtoFromRequestCommand;
+use BellissimoPizza\RequestDtoGenerator\Commands\VersionCommand;
 use BellissimoPizza\RequestDtoGenerator\Services\JsonSchemaDtoGenerator;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\ServiceProvider;
@@ -45,6 +46,7 @@ class RequestDtoGeneratorServiceProvider extends ServiceProvider
 
             $this->commands([
                 GenerateDtoFromRequestCommand::class,
+                VersionCommand::class,
             ]);
         }
     }

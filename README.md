@@ -1,8 +1,15 @@
 # Laravel Request DTO Generator
 
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://packagist.org/packages/bellissimopizza/laravel-request-dto-generator)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/php-%5E8.0-blue.svg)](https://php.net)
+[![Laravel](https://img.shields.io/badge/laravel-9.x%7C10.x%7C11.x-red.svg)](https://laravel.com)
+
 > ⚠️ **Disclaimer**: This package is not perfect and is still under active development. We welcome new suggestions, improvements, and contributions from the community. If you have ideas for enhancements or encounter issues, please feel free to open an issue or submit a pull request.
 
 A Laravel package that automatically generates Data Transfer Objects (DTOs) from your existing Request validation classes using advanced JSON Schema generation. This package helps maintain consistency between your validation logic and business logic by creating DTOs that mirror your Request validation rules with proper type hinting and nested structure support.
+
+**Current Version**: 2.1.0
 
 ## ✨ Features
 
@@ -570,6 +577,7 @@ php examples/test-search-logic.php
 
 - **[Command Usage Guide](COMMAND_USAGE.md)** - Complete guide to using the dto:generate command
 - **[Namespace Guide](NAMESPACE_GUIDE.md)** - Complete guide to DTO namespaces and organization
+- **[Versioning Guide](VERSIONING.md)** - Complete guide to package versioning and release management
 - **[Compatibility Guide](COMPATIBILITY.md)** - Laravel 9.x, 10.x, 11.x compatibility information
 - **[Artisan Usage Guide](ARTISAN_USAGE.md)** - Complete Artisan command usage guide
 - **[Type Errors Guide](TYPE_ERRORS_GUIDE.md)** - Complete guide to type errors and how to avoid them
